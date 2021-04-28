@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="renderer" content="webkit|ie-stand"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=11;IE=10;IE=9;IE=edge,chrome=1"/>
+    <meta name="viewport"
+          content="initial-scale=1.0, width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <meta name="format-detection" content="telephone=no, email=no"/>
+    <meta name="msapplication-tap-highlight" content="no"/>
+    <meta name="wap-font-scale" content="no"/>
+    <meta name="author" content="feilong.org"/>
+    <link href="skin/a_base.css" rel="stylesheet"/>
+    <link href="skin/a_baike.css" rel="stylesheet"/>
+    <link href="skin/swiper-bundle.min.css" rel="stylesheet"/>
+    <title>效能查看</title>
+    <style type="text/css">
+        .swiper-container {
+            --swiper-theme-color: #ff6600;
+            --swiper-pagination-color: #0093cc; /* 两种都可以 */
+        }
+        .swiper-pagination{
+            position: unset;
+        }
+    </style>
+</head>
+<body>
+
+
+<div class="dvc usn" id="fb-view">
+
+
+    <div class="h0head cf tof z3">
+        <button>click</button>
+        <a class="h0back icz iz2 iback jsgoback"></a>
+        <!--<a class="h0cut icy iy2 ihome" href="index.html">&nbsp;</a>-->
+        <h2 class="h0tit elis"></h2>
+        <!-- tof --></div>
+
+    <div class="cnf oy" id="cnf0">
+        <p class="x2befo hide" id="x2befo"><i class="icz iz2 ildg">请稍候......</i></p>
+        <p class="x2err hide" id="x2net0">连不上接口，请检查网络</p>
+        <p class="x2err hide" id="x2dem0">连不上接口，以下仅是演示数据</p>
+        <!-- cnf` --></div>
+
+    <div class="cnf oy opa 0 animated slow" id="cnf">
+
+        <div class="swiper-container">
+            <div class="swiper-wrapper" id="onSwiperWrapper">
+            </div>
+
+            <!-- 如果需要分页器 -->
+            <div class="swiper-pagination" slot="pagination"></div>
+
+        </div>
+
+        <div class="p2cot cf" id="oPerformance" style="padding-bottom:.15rem">
+        </div>
+    </div>
+
+
+</div>
+
+
+<script src="js/jquery.js"></script>
+<script src="js/store.js"></script>
+<script src="js/a_baike.js"></script>
+<script src="js/echarts.min.js"></script>
+<script src="js/swiper-bundle.min.js"></script>
+<script>
+    $(function () {
+
+        var userNo = getQueryVariable('userNo');
+        var lan = getQueryVariable('lan');
+        var navState = getQueryVariable('navState');
+        if (lan === 'cn') {
+            $('.h0tit').html('效能查看');
+        } else {
+            $('.h0tit').html('PerformanceView');
+        }
+        //首页隐藏导航栏
+        if (navState === 'home') {
+            $('.h0head').hide();
+            $('.cnf').css("top", "0");
+        } else {
+            $('.h0head').show();
+        }
+        $('#oPerformance').html('正在加载中,请稍后...');
+        calculateScrollHeight(true);
+        $.ajax({
+            url: a0host + "mobile/effictivePush/receiveByNo",//a0host
+            type: "POST",
+            data: {userNo: userNo},
+            cache: false,
+            success: function (data) {
+                if (data.success === true) {
+                    var results = data.result;
+                    if (results.length === 0) {
+                        $('#oPerformance').html('<p style="margin-top: .1rem">该用户没有被推送的效能数据</p>');
+                        calculateScrollHeight(true);
+                    } else {
+                        //保存数据
+                        localStorage.setItem(userNo, JSON.stringify(results));
+                    }
+                    initSwipe();
+                    for (i = 0; i < results.length; i++) {
+                        if (results[i].picFileID !== '' && results[i].picFileID !== null) {
+                            var src = a0host + 'file/file/downEffictivePic/' + results[i].picFileID;
+                            $('#onSwiperWrapper').append('<div class="swiper-slide" id="manualBody' + i + '" class="data-body" style="margin:0 auto;">' +
+                                '<h4 class="p2bti" style="padding-left:.1rem">' + results[i].title + '</h4>' +
+                                '<div class="chartbody" style="padding-left:.1rem">' +
+                                '<div id="manualBox' + i + '" class="data-box chartbox" style="height:93%;width:95%"><img class="img-responsive" src="' + src + '" /></div>' +
+                                '</div>' +
+                                '</div>');
+                            var picFileID = results[i].picFileID;
+                            $.ajax({
+                                type: "get",
+                                url: a0host + "file/file/downEffictivePic/base64/" + picFileID,
+                                async: false,
+                                success: function (data) {
+                                    if (!data.success) {
+                                        alert("效能查看图片加载失败：" + data.reason)
+                                    } else {
+                                        var result = 'data:image/jpg;base64,' + data.result;
+                                        $('#manualBox' + i).find('img').attr('src', result);
+                                        try {
+                                            localStorage.setItem(userNo + "_" + results[i].picFileID, result);
+                                        } catch (e) {
+                                            console.log('执行失败 = ' + e);
+                                        }
+
+                                    }
+                                },
+                                error: function () {
+                                    var cacheData = localStorage.getItem(userNo + "_" + results[i].picFileID);
+                                    if (cacheData === null || cacheData === '' || cacheData === undefined) {
+                                        return;
+                                    }
+                                    $('#manualBox' + i).find('img').attr('src', cacheData)
+
+                                }
+                            });
+                        } else {
+                            $('#onSwiperWrapper').append('<div class="swiper-slide" id="manualBody' + i + '" class="data-body">' +
+                                '<h4 class="p2bti" style="margin:.1rem 0 .05rem;padding-left:.1rem">' + results[i].title + '</h4>' +
+                                '<div class="chartbody">' +
+                                '<div id="manualBox' + i + '" class="data-box chartbox" style="0 .1rem 0 .1rem"></div>' +
+                                '</div>' +
+                                '</div>');
+                            // 基于准备好的dom，初始化echarts实例
+                            var myChart = echarts.init(document.getElementById('manualBox' + i));
+                            // 指定图表的配置项和数据
+                            var option = JSON.parse(results[i].code);
+                            myChart.setOption(option, true);//true重绘
+                        }
+                        if (results[i].note !== '' && results[i].note !== null) {
+                            $('#manualBox' + i).after('<p>备注语：' + results[i].note + '</p>')
+                        }
+                    }
+
+                    isImgLoad(function () {
+                        // 图片加载完成
+                        calculateScrollHeight();
+                    });
+                    loadPageState(true);
+                } else {
+                    loadPageState(false);
+                    $('#oPerformance').html('<p style="margin-top: .1rem">服务器错误！</p>');
+                    calculateScrollHeight(true);
+                }
+            },
+            error: function (e) {
+
+                loadPageState(false);
+                var results = localStorage.getItem(userNo);
+                if (results === null || results === '' || results === undefined) {
+                    $('#oPerformance').html('<p style="margin-top: .1rem">网络异常，请检查网络！</p>');
+                    calculateScrollHeight(true);
+                    return
+                }
+                loadCaCheData(JSON.parse(results), userNo);
+            }
+        });
+    });
+
+    //离线加载缓存数据
+    function loadCaCheData(results, userNo) {
+
+        initSwipe();
+        for (i = 0; i < results.length; i++) {
+            if (results[i].picFileID !== '' && results[i].picFileID !== null) {
+                var src_base64 = localStorage.getItem(userNo + "_" + results[i].picFileID);
+                $('#onSwiperWrapper').append('<div class="swiper-slide" id="manualBody' + i + '" class="data-body" style="margin:0 auto;">' +
+                    '<h4 class="p2bti" style="padding-left:.1rem">' + results[i].title + '</h4>' +
+                    '<div class="chartbody" style="padding-left:.1rem">' +
+                    '<div id="manualBox' + i + '" class="data-box chartbox" style="height:93%;width:95%"><img class="img-responsive" src="' + src_base64 + '" /></div>' +
+                    '</div>' +
+                    '</div>')
+            } else { //图表
+                $('#onSwiperWrapper').append('<div class="swiper-slide" id="manualBody' + i + '" class="data-body">' +
+                    '<h4 class="p2bti" style="margin:.1rem 0 .05rem;padding-left:.1rem">' + results[i].title + '</h4>' +
+                    '<div class="chartbody">' +
+                    '<div id="manualBox' + i + '" class="data-box chartbox" style="0 .1rem 0 .1rem"></div>' +
+                    '</div>' +
+                    '</div>');
+                // 基于准备好的dom，初始化echarts实例
+                var myChart = echarts.init(document.getElementById('manualBox' + i));
+                // 指定图表的配置项和数据
+                var option = JSON.parse(results[i].code);
+                myChart.setOption(option, true);//true重绘
+            }
+            if (results[i].note !== '' && results[i].note !== null) {
+                $('#manualBox' + i).after('<p>备注语：' + results[i].note + '</p>')
+            }
+        }
+        isImgLoad(function () {
+            // 图片加载完成
+            calculateScrollHeight();
+        });
+        loadPageState(true);
+    }
+
+    function getQueryVariable(variable) {
+        var query = window.location.search.substring(1);
+        var vars = query.split("&");
+        for (var i = 0; i < vars.length; i++) {
+            var pair = vars[i].split("=");
+            if (pair[0] === variable) {
+                return pair[1];
+            }
+        }
+        return (false);
+    }
+
+    //通知移动端页面高度
+    function noticeHeightToNative(height) {
+        var navState = getQueryVariable('navState');
+        if (navState !== 'home') {
+            return
+        }
+        try {
+            if (height === undefined) {
+                height = 0;
+            }
+            window.NanHangBaiKeNativeByHome.resize(height);
+        } catch (e) {
+            console.log('执行失败 = ' + e);
+        }
+    }
+
+    //加载状态
+    function loadPageState(state) {
+
+        try {
+            window.NanHangBaiKeNativeByHome.loadState(state);
+        } catch (e) {
+            console.log('执行失败 = ' + e);
+        }
+    }
+
+    //获取页面加载完成滚动高度
+    function calculateScrollHeight(isLoading) {
+
+        var pageContentHeight;
+        if (isLoading === true) { //正在加载中
+            $('#onSwiperWrapper').html('');
+            pageContentHeight = $('#oPerformance')[0].scrollHeight;
+
+        } else {
+            $('#oPerformance').html('');
+            pageContentHeight = $('#onSwiperWrapper')[0].scrollHeight;
+        }
+        noticeHeightToNative(pageContentHeight);
+    }
+
+    var t_img; // 定时器
+    var isLoad = true; // 控制变量
+    // 判断图片加载的函数
+    function isImgLoad(callback) {
+        // 注意我的图片类名都是cover，因为我只需要处理cover。其它图片可以不管。
+        // 查找所有封面图，迭代处理
+        $('.img-responsive').each(function (index) {
+            // 找到为0就将isLoad设为false，并退出each
+            if (this.height === 0) {
+                isLoad = false;
+                return false;
+            }
+        });
+        // 为true，没有发现为0的。加载完毕
+        if (isLoad) {
+            clearTimeout(t_img); // 清除定时器
+            // 回调函数
+            callback();
+            // 为false，因为找到了没有加载完成的图，将调用定时器递归
+        } else {
+            isLoad = true;
+            t_img = setTimeout(function () {
+                isImgLoad(callback); // 递归扫描
+            }, 500); // 我这里设置的是500毫秒就扫描一次，可以自己调整
+        }
+    }
+
+    function initSwipe() {
+
+        new Swiper('.swiper-container', {
+            direction: 'horizontal', // 垂直切换选项
+            width: window.innerWidth,
+
+
+            observer: true,//修改swiper自己或子元素时，自动初始化swiper
+            observeParents: true,//修改swiper的父元素时，自动初始化swiper
+            // 如果需要分页器
+            pagination: {
+                el: '.swiper-pagination',
+                clickable: true
+            }
+        })
+    }
+
+
+</script>
+
+
+</body>
+</html>
+
